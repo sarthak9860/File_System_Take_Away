@@ -132,10 +132,11 @@ int simplefs_write(int file_handle, char *buf, int nbytes) {
 	int current_offset = offset;
 	int newly_allocated[MAX_FILE_SIZE] = {0};
 
-	int temp_offset = current_offset;
 	while (bytes_written < nbytes) {
-		int block_index = temp_offset / BLOCKSIZE;
+		int block_index = current_offset / BLOCKSIZE;
+		int block_offset = current_offset % BLOCKSIZE;
 
+		// Allocate block if not already allocated
 		if (inode.direct_blocks[block_index] == -1) {
 			int new_block = simplefs_allocDataBlock();
 			if (new_block == -1) {
@@ -147,30 +148,22 @@ int simplefs_write(int file_handle, char *buf, int nbytes) {
 				}
 				return -1;
 			}
+
 			inode.direct_blocks[block_index] = new_block;
 			newly_allocated[block_index] = 1;
+
+			// Initialize the new block to zeros
+			char zero_block[BLOCKSIZE];
+			memset(zero_block, 0, BLOCKSIZE);
+			simplefs_writeDataBlock(new_block, zero_block);
 		}
 
-		int space = BLOCKSIZE - (temp_offset % BLOCKSIZE);
-		int to_consume = (nbytes - bytes_written < space) ? (nbytes - bytes_written) : space;
-		bytes_written += to_consume;
-		temp_offset += to_consume;
-	}
-
-	bytes_written = 0;
-	current_offset = offset;
-
-	while (bytes_written < nbytes) {
-		int block_index = current_offset / BLOCKSIZE;
-		int block_offset = current_offset % BLOCKSIZE;
 		int block_num = inode.direct_blocks[block_index];
-
 		char temp_block[BLOCKSIZE];
 		simplefs_readDataBlock(block_num, temp_block);
 
-		int to_copy = BLOCKSIZE - block_offset;
-		if (to_copy > (nbytes - bytes_written))
-			to_copy = nbytes - bytes_written;
+		int space = BLOCKSIZE - block_offset;
+		int to_copy = (nbytes - bytes_written < space) ? (nbytes - bytes_written) : space;
 
 		memcpy(temp_block + block_offset, buf + bytes_written, to_copy);
 		simplefs_writeDataBlock(block_num, temp_block);

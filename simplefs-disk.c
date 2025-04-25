@@ -164,7 +164,7 @@ void simplefs_readDataBlock(int blocknum, char *buf){
     char tempBuf[BLOCKSIZE];
     lseek(DISK_FD, BLOCKSIZE*(5 + blocknum), SEEK_SET);
     int ret = read(DISK_FD, tempBuf, BLOCKSIZE);
-    //assert(ret == BLOCKSIZE);
+    assert(ret == BLOCKSIZE);
     memcpy(buf, tempBuf, BLOCKSIZE);
 }
 
